@@ -6,6 +6,7 @@ interface FileShape {
   sessions: Record<string, SessionRecord>;
 }
 
+/** Persists Discord channel/thread → Cursor agent id mappings in a JSON file. */
 export class FileSessionStore implements SessionStore {
   private readonly filePath: string;
   private writeChain: Promise<void> = Promise.resolve();

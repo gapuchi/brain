@@ -15,6 +15,7 @@ type AgentFactory = {
   resume: typeof Agent.resume;
 };
 
+/** Owns Discord session → Cursor agent mapping, create/resume, and per-session run serialization. */
 export class CursorDispatcher {
   private readonly handles = new Map<string, SDKAgent>();
   private readonly queues = new Map<string, Promise<void>>();
