@@ -1,34 +1,14 @@
 import { config as loadEnv } from "dotenv";
+import { bool, cleanEnv, makeExactValidator, str } from "envalid";
 
 loadEnv();
 
-function required(name: string): string {
-  const value = process.env[name]?.trim();
-  if (!value) {
-    throw new Error(`Missing required environment variable ${name}`);
-  }
-  return value;
-}
-
-function optional(name: string): string | undefined {
-  const value = process.env[name]?.trim();
-  return value ? value : undefined;
-}
-
-function csv(name: string): string[] {
-  const value = optional(name);
-  if (!value) return [];
-  return value
+const csv = makeExactValidator<string[]>((input) =>
+  input
     .split(",")
     .map((part) => part.trim())
-    .filter(Boolean);
-}
-
-function bool(name: string, fallback: boolean): boolean {
-  const value = optional(name);
-  if (value === undefined) return fallback;
-  return value === "1" || value.toLowerCase() === "true";
-}
+    .filter(Boolean),
+);
 
 export type CursorRuntime = "cloud" | "local";
 
@@ -49,24 +29,35 @@ export interface AppConfig {
 }
 
 export function loadConfig(): AppConfig {
-  const runtime = (optional("CURSOR_RUNTIME") ?? "cloud").toLowerCase();
-  if (runtime !== "cloud" && runtime !== "local") {
-    throw new Error("CURSOR_RUNTIME must be 'cloud' or 'local'");
-  }
+  const env = cleanEnv(process.env, {
+    DISCORD_TOKEN: str(),
+    CURSOR_API_KEY: str(),
+    CURSOR_RUNTIME: str({ choices: ["cloud", "local"], default: "cloud" }),
+    CURSOR_MODEL: str({ default: "composer-2.5" }),
+    CURSOR_REPO_URL: str({ default: "" }),
+    CURSOR_REPO_REF: str({ default: "main" }),
+    CURSOR_AUTO_CREATE_PR: bool({ default: false }),
+    CURSOR_LOCAL_CWD: str({ default: process.cwd() }),
+    DISCORD_ALLOWED_GUILD_IDS: csv({ default: [] }),
+    DISCORD_ALLOWED_USER_IDS: csv({ default: [] }),
+    DISCORD_ALLOWED_CHANNEL_IDS: csv({ default: [] }),
+    DISCORD_REQUIRE_MENTION: bool({ default: false }),
+    DATA_DIR: str({ default: "./data" }),
+  });
 
   return {
-    discordToken: required("DISCORD_TOKEN"),
-    cursorApiKey: required("CURSOR_API_KEY"),
-    cursorRuntime: runtime,
-    cursorModel: optional("CURSOR_MODEL") ?? "composer-2.5",
-    cursorRepoUrl: optional("CURSOR_REPO_URL"),
-    cursorRepoRef: optional("CURSOR_REPO_REF") ?? "main",
-    cursorAutoCreatePr: bool("CURSOR_AUTO_CREATE_PR", false),
-    cursorLocalCwd: optional("CURSOR_LOCAL_CWD") ?? process.cwd(),
-    allowedGuildIds: csv("DISCORD_ALLOWED_GUILD_IDS"),
-    allowedUserIds: csv("DISCORD_ALLOWED_USER_IDS"),
-    allowedChannelIds: csv("DISCORD_ALLOWED_CHANNEL_IDS"),
-    requireMention: bool("DISCORD_REQUIRE_MENTION", false),
-    dataDir: optional("DATA_DIR") ?? "./data",
+    discordToken: env.DISCORD_TOKEN,
+    cursorApiKey: env.CURSOR_API_KEY,
+    cursorRuntime: env.CURSOR_RUNTIME,
+    cursorModel: env.CURSOR_MODEL,
+    cursorRepoUrl: env.CURSOR_REPO_URL || undefined,
+    cursorRepoRef: env.CURSOR_REPO_REF,
+    cursorAutoCreatePr: env.CURSOR_AUTO_CREATE_PR,
+    cursorLocalCwd: env.CURSOR_LOCAL_CWD,
+    allowedGuildIds: env.DISCORD_ALLOWED_GUILD_IDS,
+    allowedUserIds: env.DISCORD_ALLOWED_USER_IDS,
+    allowedChannelIds: env.DISCORD_ALLOWED_CHANNEL_IDS,
+    requireMention: env.DISCORD_REQUIRE_MENTION,
+    dataDir: env.DATA_DIR,
   };
 }
